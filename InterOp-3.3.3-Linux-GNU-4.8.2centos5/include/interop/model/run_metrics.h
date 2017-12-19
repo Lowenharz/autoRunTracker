@@ -1,0 +1,567 @@
+/** Collection of all metric sets for a run
+ *
+ *  @file
+ *  @date 3/9/16
+ *  @version 1.0
+ *  @copyright Illumina Use Only
+ */
+#pragma once
+
+#include "interop/util/exception.h"
+#include "interop/util/object_list.h"
+#include "interop/model/metric_base/metric_set.h"
+#include "interop/model/model_exceptions.h"
+#include "interop/io/stream_exceptions.h"
+#include "interop/io/metric_file_stream.h"
+#include "interop/model/run/info.h"
+#include "interop/model/run/parameters.h"
+
+//Metrics
+#include "interop/model/metrics/corrected_intensity_metric.h"
+#include "interop/model/metrics/dynamic_phasing_metric.h"
+#include "interop/model/metrics/error_metric.h"
+#include "interop/model/metrics/extraction_metric.h"
+#include "interop/model/metrics/image_metric.h"
+#include "interop/model/metrics/index_metric.h"
+#include "interop/model/metrics/phasing_metric.h"
+#include "interop/model/metrics/q_metric.h"
+#include "interop/model/metrics/q_by_lane_metric.h"
+#include "interop/model/metrics/q_collapsed_metric.h"
+#include "interop/model/metrics/tile_metric.h"
+// IUO
+#include "interop/model/metrics/alignment_metric.h"
+#include "interop/model/metrics/basecalling_metric.h"
+#include "interop/model/metrics/color_matrix_metric.h"
+#include "interop/model/metrics/event_metric.h"
+#include "interop/model/metrics/extended_tile_metric.h"
+#include "interop/model/metrics/fwhm_grid_metric.h"
+#include "interop/model/metrics/pf_grid_metric.h"
+#include "interop/model/metrics/q_grid_metric.h"
+#include "interop/model/metrics/registration_metric.h"
+#include "interop/model/metrics/distortion_metric.h"
+#include "interop/model/metrics/static_run_metric.h"
+#include "interop/model/metrics/run_diagnostics_metric.h"
+
+namespace illumina { namespace interop { namespace model { namespace metrics
+{
+
+    /**  Collection of all metric sets for a run
+     *
+     * @ingroup run_metrics
+     * @see corrected_intensity_metrics
+     * @see dynamic_phasing_metric
+     * @see error_metrics
+     * @see extraction_metrics
+     * @see image_metrics
+     * @see index_metrics
+     * @see phasing_metric
+     * @see q_metrics
+     * @see tile_metrics
+     * @see q_by_lane_metric
+     * @see q_collapsed_metric
+     *
+     * IUO
+     * @see alignment_metric
+     * @see basecalling_metric
+     * @see color_matrix_metric
+     * @see static_run_metric
+     * @see event_metric
+     * @see extended_tile_metric
+     * @see fwhm_grid_metric
+     * @see pf_grid_metric
+     * @see q_grid_metric
+     * @see registration_metric
+     * @see distortion_metric
+     */
+    class run_metrics
+    {
+    public:
+        /** List of metrics */
+        typedef make_type_list<
+                corrected_intensity_metric,
+                dynamic_phasing_metric,
+                error_metric,
+                extraction_metric,
+                image_metric,
+                index_metric,
+                phasing_metric,
+                q_metric,
+                q_by_lane_metric,
+                q_collapsed_metric,
+                tile_metric,
+                // IUO
+                alignment_metric,
+                basecalling_metric,
+                color_matrix_metric,
+                event_metric,
+                extended_tile_metric,
+                fwhm_grid_metric,
+                pf_grid_metric,
+                q_grid_metric,
+                registration_metric,
+                run_diagnostics_metric,
+                static_run_metric,
+                distortion_metric
+
+        >::result_t metric_type_list_t;
+
+    private:
+        template<class T>
+        struct create_metric_set
+        {
+            typedef metric_base::metric_set<T> result_t;
+        };
+        typedef transform_type_list<metric_type_list_t, create_metric_set>::result_t metric_set_list_t;
+        typedef object_list<metric_set_list_t> metric_list_t;
+
+    public:
+        /** Define an id type */
+        typedef metric_base::base_metric::id_t id_t;
+        /** Define a map of ids to a base metric */
+        typedef std::map<id_t, metric_base::base_metric> tile_metric_map_t;
+        /** Define a map of ids to a base cycle metric */
+        typedef std::map<id_t, metric_base::base_cycle_metric> cycle_metric_map_t;
+        /** Define a map of ids to a base event metric
+         * @note IUO
+         */
+        typedef std::map<id_t, metrics::event_metric> event_metric_map_t;
+
+    public:
+        /** Define set of ids */
+        typedef metric_base::metric_set<error_metric>::id_set_t id_set_t;
+
+    public:
+        /** Constructor
+         */
+        run_metrics()
+        {
+        }
+
+        /** Constructor
+         *
+         * @param run_info run information
+         * @param run_param run parameters
+         */
+        run_metrics(const run::info &run_info, const run::parameters &run_param = run::parameters()) :
+                m_run_info(run_info),
+                m_run_parameters(run_param)
+        {
+        }
+
+    public:
+        /** @defgroup run_metrics Run Metrics
+         *
+         * All the InterOp data as well as the RunInfo
+         *
+         * @ref illumina::interop::model::metrics::run_metrics "See full class description"
+         * @{
+         */
+        /** Read binary metrics and XML files from the run folder
+         *
+         * @note invalid_run_info_cycle_exception and invalid_tile_list_exception can be safely caught and ignored
+         *
+         * @param run_folder run folder path
+         * @param thread_count number of threads to use for network loading
+         */
+        void read(const std::string &run_folder, const size_t thread_count=1) throw(xml::xml_file_not_found_exception,
+        xml::bad_xml_format_exception,
+        xml::empty_xml_format_exception,
+        xml::missing_xml_element_exception,
+        xml::xml_parse_exception,
+        io::file_not_found_exception,
+        io::bad_format_exception,
+        io::incomplete_file_exception,
+        model::invalid_channel_exception,
+        model::index_out_of_bounds_exception,
+        model::invalid_tile_naming_method,
+        model::invalid_tile_list_exception,
+        model::invalid_run_info_exception,
+        model::invalid_run_info_cycle_exception);
+        /** Read binary metrics and XML files from the run folder
+         *
+         * @note invalid_run_info_cycle_exception and invalid_tile_list_exception can be safely caught and ignored
+         *
+         * @param run_folder run folder path
+         * @param valid_to_load list of metrics to load
+         * @param thread_count number of threads to use for network loading
+         * @param skip_loaded skip metrics that are already loaded
+         */
+        void read(const std::string &run_folder,
+                  const std::vector<unsigned char>& valid_to_load,
+                  const size_t thread_count=1,
+                  const bool skip_loaded=false)
+        throw(xml::xml_file_not_found_exception,
+        xml::bad_xml_format_exception,
+        xml::empty_xml_format_exception,
+        xml::missing_xml_element_exception,
+        xml::xml_parse_exception,
+        io::file_not_found_exception,
+        io::bad_format_exception,
+        io::incomplete_file_exception,
+        model::invalid_channel_exception,
+        model::index_out_of_bounds_exception,
+        model::invalid_tile_naming_method,
+        model::invalid_tile_list_exception,
+        model::invalid_run_info_exception,
+        model::invalid_run_info_cycle_exception,
+        model::invalid_parameter);
+
+        /** Read XML files: RunInfo.xml and possibly RunParameters.xml
+         *
+         * @param run_folder run folder path
+         */
+        size_t read_xml(const std::string &run_folder) throw(io::file_not_found_exception,
+        xml::xml_file_not_found_exception,
+        xml::bad_xml_format_exception,
+        xml::empty_xml_format_exception,
+        xml::missing_xml_element_exception,
+        xml::xml_parse_exception);
+
+        /** Read RunInfo.xml
+         *
+         * @param run_folder run folder path
+         */
+        void read_run_info(const std::string &run_folder) throw(xml::xml_file_not_found_exception,
+        xml::bad_xml_format_exception,
+        xml::empty_xml_format_exception,
+        xml::missing_xml_element_exception,
+        xml::xml_parse_exception);
+
+        /** Read RunParameters.xml if necessary
+         *
+         * @param run_folder run folder path
+         * @param force_load force loading of run parameters
+         */
+        size_t read_run_parameters(const std::string &run_folder, const bool force_load=false) throw(
+        io::file_not_found_exception,
+        xml::xml_file_not_found_exception,
+        xml::bad_xml_format_exception,
+        xml::empty_xml_format_exception,
+        xml::missing_xml_element_exception,
+        xml::xml_parse_exception);
+
+        /** Finalize the metric sets after loading from disk
+         *
+         * @param count number of bins for legacy q-metrics
+         */
+        void finalize_after_load(size_t count = std::numeric_limits<size_t>::max()) throw(
+        model::invalid_channel_exception,
+        model::invalid_tile_naming_method,
+        model::index_out_of_bounds_exception,
+        model::invalid_tile_list_exception,
+        model::invalid_run_info_exception,
+        model::invalid_run_info_cycle_exception);
+
+        /** Test if all metrics are empty
+         *
+         * @return true if all metrics are empty
+         */
+        bool empty() const;
+
+        /** Update channels for legacy runs
+         *
+         * @param type instrument type
+         */
+        void legacy_channel_update(const constants::instrument_type type);
+
+        /** Set the tile naming method
+         *
+         * @param naming_method tile naming method
+         */
+        void set_naming_method(const constants::tile_naming_method naming_method);
+        /** Get number of legacy bins
+         *
+         * @param legacy_bin_count known number of bins
+         * @return number of legacy bins
+         */
+        size_t count_legacy_bins(const size_t legacy_bin_count=std::numeric_limits<size_t>::max())const;
+        /** Test whether run parameters must be loaded
+         *
+         * This is used to determine channel count and legacy q-score bins
+         *
+         * @param legacy_bin_count known number of bins
+         * @return true if run parameters is required
+         */
+         bool is_run_parameters_required(const size_t legacy_bin_count=std::numeric_limits<size_t>::max())const;
+
+    public:
+        /** Get information about the run
+         *
+         * @return run info
+         */
+        const run::info &run_info() const
+        {
+            return m_run_info;
+        }
+
+        /** Set information about the run
+         *
+         * @param info run info
+         */
+        void run_info(const run::info &info)
+        {
+            m_run_info = info;
+        }
+        /** @} */
+        /** Get parameters describing the run
+         *
+         * @return run parameters
+         */
+        const run::parameters &run_parameters() const
+        {
+            return m_run_parameters;
+        }
+
+        /** Set parameters describing the run
+         *
+         * @param param run parameters
+         */
+        void run_parameters(const run::parameters &param)
+        {
+            m_run_parameters = param;
+        }
+
+        /** List all filenames for a specific metric
+         *
+         * @param group metric group type
+         * @param files destination interop file names (first one is legacy, all subsequent are by cycle)
+         * @param run_folder run folder location
+         * @param use_out use the copied version
+         */
+        void list_filenames(const constants::metric_group group,
+                            std::vector<std::string>& files,
+                            const std::string& run_folder,
+                            const bool use_out=true)
+        throw(invalid_run_info_exception);
+
+        /** List all filenames for all metrics
+         *
+         * @param files destination interop file names (first one is legacy, all subsequent are by cycle)
+         * @param run_folder run folder location
+         * @param bycycle if true, list all by cycle file name
+         * @param use_out use the copied version
+         */
+        void list_filenames(std::vector<std::string>& files,
+                            const std::string& run_folder,
+                            const bool bycycle=false,
+                            const bool use_out=true)
+        throw(invalid_run_info_exception);
+
+    public:
+        /** Set a given metric set
+         *
+         * @param metrics metric set
+         */
+        template<class T>
+        void set(const T& metrics)
+        {
+            //static_assert( )
+            m_metrics.get< T >() = metrics;
+        }
+        /** Get a metric set
+         *
+         * @return metric set
+         */
+        template<class T>
+        typename metric_base::metric_set_helper<T>::metric_set_t &get()
+        {
+            typedef typename metric_base::metric_set_helper<T>::metric_set_t metric_set_t;
+            return m_metrics.get< metric_set_t >();
+        }
+
+        /** Get a metric set
+         *
+         * @return metric set
+         */
+        template<class T>
+        const typename metric_base::metric_set_helper<T>::metric_set_t &get() const
+        {
+            typedef typename metric_base::metric_set_helper<T>::metric_set_t metric_set_t;
+            return m_metrics.get< metric_set_t >();
+        }
+
+        /** Get a metric set given a metric type
+         *
+         * @todo Remove. This is used by the SWIG binding because it is hard to wrap the return type of get<>()
+         * @return metric set
+         */
+        template<class T>
+        metric_base::metric_set<T> &get_metric_set()
+        {
+            return m_metrics.get<metric_base::metric_set<T> >();
+        }
+
+    public:
+        /** Check if the InterOp file for each metric set exists
+         *
+         * This will set the `metric_set::data_source_exists` flag.
+         *
+         * @param run_folder run folder path
+         * @param last_cycle last cycle to search for by cycle interops
+         */
+        void check_for_data_sources(const std::string &run_folder, const size_t last_cycle);
+        /** Read binary metrics from the run folder
+         *
+         * This function ignores:
+         *  - Missing InterOp files
+         *  - Incomplete InterOp files
+         *  - Missing RunParameters.xml for non-legacy run folders
+         *
+         * @param run_folder run folder path
+         * @param last_cycle last cycle of run
+         * @param thread_count number of threads to use for network loading
+         */
+        void read_metrics(const std::string &run_folder, const size_t last_cycle, const size_t thread_count) throw(
+        io::file_not_found_exception,
+        io::bad_format_exception,
+        io::incomplete_file_exception);
+        /** Read binary metrics from the run folder
+         *
+         * This function ignores:
+         *  - Missing InterOp files
+         *  - Incomplete InterOp files
+         *  - Missing RunParameters.xml for non-legacy run folders
+         *
+         * @param run_folder run folder path
+         * @param last_cycle last cycle of run
+         * @param valid_to_load boolean vector indicating which files to load
+         * @param thread_count number of threads to use for network loading
+         * @param skip_loaded skip metrics that are already loaded
+         */
+        void read_metrics(const std::string &run_folder,
+                          const size_t last_cycle,
+                          const std::vector<unsigned char>& valid_to_load,
+                          const size_t thread_count,
+                          const bool skip_loaded=false) throw(
+        io::file_not_found_exception,
+        io::bad_format_exception,
+        io::incomplete_file_exception,
+        model::invalid_parameter);
+        /** Write binary metrics to the run folder
+         *
+         * @param run_folder run folder path
+         * @param use_out use the copied version
+         */
+        void write_metrics(const std::string &run_folder, const bool use_out=true)const throw(
+        io::file_not_found_exception,
+        io::bad_format_exception);
+
+
+        /** Read a single metric set from a binary buffer
+         *
+         * @param group metric set to write
+         * @param buffer binary buffer
+         * @param buffer_size size of binary buffer
+         */
+        void read_metrics_from_buffer(const constants::metric_group group,
+                                     uint8_t* buffer,
+                                     const size_t buffer_size) throw(
+        io::file_not_found_exception,
+        io::bad_format_exception,
+        io::incomplete_file_exception,
+        model::index_out_of_bounds_exception);
+        /** Write a single metric set to a binary buffer
+         *
+         * @param group metric set to write
+         * @param buffer binary buffer
+         * @param buffer_size size of binary buffer
+         */
+        void write_metrics_to_buffer(const constants::metric_group group,
+                                     uint8_t* buffer,
+                                     const size_t buffer_size)const throw(
+        io::invalid_argument,
+        io::bad_format_exception,
+        io::incomplete_file_exception);
+        /** Calculate the required size of the buffer for writing
+         *
+         * @param group metric set to write
+         * @return required size of the binary buffer
+         */
+        size_t calculate_buffer_size(const constants::metric_group group)const throw(
+        io::invalid_argument, io::bad_format_exception);
+
+        /** Validate whether the RunInfo.xml matches the InterOp files
+         *
+         * @throws invalid_run_info_exception
+         * @throws invalid_run_info_cycle_exception
+         */
+        void validate() throw(invalid_run_info_exception, invalid_run_info_cycle_exception);
+
+        /** Read binary metrics and XML files from the run folder
+         *
+         * @param func call back for metric and XML reading
+         */
+        template<class ReadFunc>
+        void read_callback(ReadFunc &func)
+        {
+            metrics_callback(func);
+            func(m_run_info);
+            finalize_after_load();
+        }
+
+        /** Read binary metrics from the run folder
+         *
+         * @param func call back for metric reading
+         */
+        template<class Func>
+        void metrics_callback(Func &func)
+        {
+            m_metrics.apply(func);
+        }
+        /** Read binary metrics from the run folder
+         *
+         * @param func call back for metric reading
+         */
+        template<class Func>
+        void metrics_callback(Func &func)const
+        {
+            m_metrics.apply(func);
+        }
+        /** Check if the metric group is empty
+         *
+         * @param group_name prefix of interop group metric
+         * @return true if metric is empty
+         */
+        bool is_group_empty(const std::string& group_name) const;
+        /** Check if the metric group is empty
+         *
+         * @param group_id prefix of interop group metric id
+         * @return true if metric is empty
+         */
+        bool is_group_empty(const constants::metric_group group_id) const;
+
+        /** Populate a map of valid tiles
+         *
+         * @param map mapping between tile has and base_metric
+         */
+        void populate_id_map(tile_metric_map_t &map) const;
+
+        /** Populate a map of valid tiles and cycles
+         *
+         * @param map mapping between tile has and base_cycle_metric
+         */
+        void populate_id_map(cycle_metric_map_t &map) const;
+        /** Populate a map of valid tiles, cycles, and events
+         *
+         * @note IUO
+         * @param map mapping between tile and event_metric
+         */
+        void populate_id_map(event_metric_map_t &map) const;
+        /** Sort the metrics by id
+         */
+        void sort();
+
+        /** Clear all the metrics
+         */
+         void clear();
+
+    private:
+        metric_list_t m_metrics;
+        run::info m_run_info;
+        run::parameters m_run_parameters;
+
+    };
+
+
+}}}}
+
